@@ -1,0 +1,36 @@
+name: Build NoTrO APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: unzip -oq NoTrO.zip
+      - name: Find project folder
+        run: echo "ROOT=$(dirname "$(find . -name settings.gradle | head -1)")" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Download offline voice model (runs on GitHub, no VPN needed on your side)
+        working-directory: ${{ env.ROOT }}/app/src/main/assets
+        run: |
+          curl -L --fail -o model.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+          unzip -q model.zip
+          rm model.zip
+          uuidgen > vosk-model-small-en-us-0.15/uuid
+          ls
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5
+      - name: Build
+        working-directory: ${{ env.ROOT }}
+        run: gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NoTrO-apk
+          path: ${{ env.ROOT }}/app/build/outputs/apk/debug/app-debug.apk
+        
